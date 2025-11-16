@@ -1,0 +1,341 @@
+@model List<GrafoModel>
+
+@{
+    ViewData["Title"] = "Visualização de Grafos Biconexos";
+}
+
+<script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
+<!-- jQuery (necessário para qTip) -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<!-- qTip2 -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/qtip2/3.0.3/jquery.qtip.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qtip2/3.0.3/jquery.qtip.min.js"></script>
+
+<!-- Plugin Cytoscape + qTip -->
+<script src="https://unpkg.com/cytoscape-qtip/cytoscape-qtip.js"></script>
+@* <script src="https://cdnjs.cloudflare.com/ajax/libs/ccapture.js/1.1.0/CCapture.all.min.js"></script> *@
+
+
+
+<h2>Visualização dos Grafos + Algoritmo Biconexo</h2>
+
+<style>
+    .graf-container {
+        display: flex;
+        gap: 40px;
+        flex-wrap: wrap;
+        margin-top: 20px;
+    }
+
+    .graf-box {
+        width: 520px;
+        height: 520px;
+        border: 1px solid #aaa;
+        border-radius: 8px;
+    }
+
+    .titulo-grafo {
+        text-align: center;
+        font-size: 20px;
+        font-weight: bold;
+        margin-bottom: 8px;
+    }
+</style>
+
+<div class="graf-container">
+    @foreach (var g in Model)
+    {
+        string id = g.Nome.Replace(".txt", "");
+        <div>
+            <div class="titulo-grafo">@g.Nome</div>
+
+            <div id="graf-@id" class="graf-box"></div>
+
+            <button class="btn btn-primary" onclick="gravarExecucao('@id')">
+                Gerar GIF da Execução
+            </button>
+
+            <script>
+                const vertices_@id = @g.Vertices;
+
+                const arestas_@id =
+                                            @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                                                g.Arestas.Select(a => new { v1 = a.v1, v2 = a.v2 })
+                                ));
+
+            const articulacoes_@id =
+                    @Html.Raw(System.Text.Json.JsonSerializer.Serialize(g.ListaArticulacoes));
+
+            const valores_@id =
+                    @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                                                                                                                                                                                                                                                                                                                                                                                                g.ValoresPorVertice.ToDictionary(k => k.Key, v => new { low = v.Value.low, pre = v.Value.pre })
+                                ));
+        </script>
+    </div>
+        }
+</div>
+
+@* <script>
+    document.addEventListener("DOMContentLoaded", () => {
+
+        function desenharGrafo(containerId, vertices, arestas, articulacoes, valores) {
+
+            const elements = [];
+
+            for (let i = 0; i < vertices; i++) {
+                const isArticulation = articulacoes.includes(i);
+                const lv = valores[i];
+
+                elements.push({
+                    data: {
+                        id: 'n' + i,
+                        label: `${i}\nL:${lv.low} / P:${lv.pre}`,
+                        articulation: isArticulation
+                    }
+                });
+            }
+
+            arestas.forEach((a, index) => {
+                elements.push({
+                    data: {
+                        id: 'e' + index,
+                        source: 'n' + a.v1,
+                        target: 'n' + a.v2
+                    }
+                });
+            });
+
+            const cy = cytoscape({
+                container: document.getElementById(containerId),
+                elements: elements,
+
+                style: [
+                    // Vértices
+                    {
+                        selector: 'node',
+                        style: {
+                            'background-color': function (ele) {
+                                return ele.data('articulation') ? '#ff4136' : '#0074D9';
+                            },
+                            'label': 'data(label)',
+                            'color': '#fff',
+                            'font-size': '13px',
+                            'text-wrap': 'wrap',
+                            'text-valign': 'center',
+                            'text-halign': 'center',
+                            'width': 50,
+                            'height': 50
+                        }
+                    },
+
+                    {
+                        selector: 'edge',
+                        style: {
+                            'width': 3,
+                            'line-color': '#999',
+                            'curve-style': 'bezier'
+                        }
+                    },
+
+                    {
+                        selector: 'edge:hover',
+                        style: {
+                            'width': 6,
+                            'line-color': '#ff851b'
+                        }
+                    },
+
+                    // Nó hover
+                    {
+                        selector: 'node:hover',
+                        style: {
+                            'border-width': 3,
+                            'border-color': '#ffdc00'
+                        }
+                    }
+                ],
+
+                layout: {
+                    name: 'cose',
+                    padding: 20,
+                    animate: true,
+                    idealEdgeLength: 80,
+                    nodeRepulsion: 4000
+                }
+            });
+
+            cy.nodes().forEach(node => {
+                node.qtip({
+                    content: `Vértice ${node.id().substring(1)}<br/>LOW = ${valores[node.id().substring(1)].low}<br/>PRE = ${valores[node.id().substring(1)].pre}`,
+                    position: {
+                        my: 'top center',
+                        at: 'bottom center'
+                    },
+                    style: {
+                        classes: 'qtip-bootstrap',
+                        tip: { width: 10, height: 10 }
+                    }
+                });
+            });
+
+            window["cy_" + containerId.replace("graf-", "")] = cy;
+            window["valores_" + containerId.replace("graf-", "")] = valores;
+            window["articulacoes_" + containerId.replace("graf-", "")] = articulacoes;
+            window["vertices_" + containerId.replace("graf-", "")] = vertices;
+
+        }
+
+        desenharGrafo("graf-biconexo", vertices_biconexo, arestas_biconexo, articulacoes_biconexo, valores_biconexo);
+        desenharGrafo("graf-nao_biconexo", vertices_nao_biconexo, arestas_nao_biconexo, articulacoes_nao_biconexo, valores_nao_biconexo);
+
+    });
+</script> *@
+
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        async function animarDFS(cy, ordemDFS, arestas, delay = 900) {
+
+            // Reset visual
+            cy.nodes().style('background-color', ele => ele.data('articulation') ? '#ff4136' : '#0074D9');
+            cy.edges().style('line-color', '#999').style('width', 3);
+
+            for (let i = 0; i < ordemDFS.length; i++) {
+
+                let atual = ordemDFS[i];
+                let proximo = ordemDFS[i + 1];
+
+                // Destacar nó atual
+                cy.getElementById("n" + atual).animate({
+                    style: { 'background-color': '#ffdc00' }   // amarelo
+                }, { duration: 300 });
+
+                if (proximo !== undefined) {
+                    // Procurar a aresta entre atual -> proximo
+                    let aresta = cy.$(`#n${atual}`).edgesTo(`#n${proximo}`);
+
+                    aresta.animate({
+                        style: { 'line-color': '#ff851b', 'width': 6 }
+                    }, { duration: 300 });
+
+                    // Destacar o próximo nó
+                    cy.getElementById("n" + proximo).animate({
+                        style: { 'background-color': '#2ecc40' }   // verde
+                    }, { duration: 300 });
+                }
+
+                await sleep(delay);
+
+                // Após visitar, marca como visitado em azul escuro
+                cy.getElementById("n" + atual).animate({
+                    style: { 'background-color': '#001F3F' }
+                }, { duration: 200 });
+            }
+        }
+
+        function desenharGrafo(containerId, vertices, arestas, articulacoes, valores) {
+
+            const elements = [];
+
+            // Nós
+            for (let i = 0; i < vertices; i++) {
+                const isArticulation = articulacoes.includes(i);
+                const lv = valores[i];
+
+                elements.push({
+                    data: {
+                        id: 'n' + i,
+                        label: `${i}\nL:${lv.low} / P:${lv.pre}`,
+                        articulation: isArticulation,
+                        pre: lv.pre
+                    }
+                });
+            }
+
+            // Arestas
+            arestas.forEach((a, index) => {
+                elements.push({
+                    data: {
+                        id: 'e' + index,
+                        source: 'n' + a.v1,
+                        target: 'n' + a.v2
+                    }
+                });
+            });
+
+            // Criação do grafo
+            const cy = cytoscape({
+                container: document.getElementById(containerId),
+                elements: elements,
+
+                style: [
+                    {
+                        selector: 'node',
+                        style: {
+                            'background-color': ele =>
+                                ele.data('articulation') ? '#ff4136' : '#0074D9',
+                            'label': 'data(label)',
+                            'color': '#fff',
+                            'font-size': '13px',
+                            'text-wrap': 'wrap',
+                            'text-valign': 'center',
+                            'text-halign': 'center',
+                            'width': 50,
+                            'height': 50
+                        }
+                    },
+                    {
+                        selector: 'edge',
+                        style: {
+                            'width': 3,
+                            'line-color': '#999',
+                            'curve-style': 'bezier'
+                        }
+                    }
+                ],
+
+                layout: {
+                    name: 'cose',
+                    padding: 20,
+                    animate: true,
+                    idealEdgeLength: 80,
+                    nodeRepulsion: 4000
+                }
+            });
+
+            // Lista DFS baseada em PRE[]
+            const ordemDFS = Object.keys(valores)
+                .map(v => ({ v: parseInt(v), pre: valores[v].pre }))
+                .sort((a, b) => a.pre - b.pre)
+                .map(e => e.v);
+
+            // Criar botão de animação
+            const btn = document.createElement("button");
+            btn.innerText = "▶ Animar DFS";
+            btn.style.marginTop = "10px";
+            btn.style.padding = "8px 14px";
+            btn.style.fontSize = "14px";
+            btn.style.cursor = "pointer";
+            btn.style.display = "block";
+
+            document.getElementById(containerId).after(btn);
+
+            btn.addEventListener("click", () => {
+                animarDFS(cy, ordemDFS, arestas);
+            });
+
+            return cy;
+        }
+
+        // Desenha cada grafo
+        desenharGrafo("graf-biconexo", vertices_biconexo, arestas_biconexo, articulacoes_biconexo, valores_biconexo);
+        desenharGrafo("graf-nao_biconexo", vertices_nao_biconexo, arestas_nao_biconexo, articulacoes_nao_biconexo, valores_nao_biconexo);
+
+    });
+</script>
