@@ -52,10 +52,6 @@
 
             <div id="graf-@id" class="graf-box"></div>
 
-            <button class="btn btn-primary" onclick="gravarExecucao('@id')">
-                Gerar GIF da Execução
-            </button>
-
             <script>
                 const vertices_@id = @g.Vertices;
 
@@ -314,21 +310,6 @@
                 .map(v => ({ v: parseInt(v), pre: valores[v].pre }))
                 .sort((a, b) => a.pre - b.pre)
                 .map(e => e.v);
-
-            // Criar botão de animação
-            const btn = document.createElement("button");
-            btn.innerText = "▶ Animar DFS";
-            btn.style.marginTop = "10px";
-            btn.style.padding = "8px 14px";
-            btn.style.fontSize = "14px";
-            btn.style.cursor = "pointer";
-            btn.style.display = "block";
-
-            document.getElementById(containerId).after(btn);
-
-            btn.addEventListener("click", () => {
-                animarDFS(cy, ordemDFS, arestas);
-            });
 
             return cy;
         }
